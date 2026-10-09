@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#020617">
+<title>Arkon RH — Controle de Ponto</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+        keyframes: {
+          'ring-pulse': {
+            '0%':   { transform: 'scale(0.95)', opacity: '0.7' },
+            '100%': { transform: 'scale(1.35)', opacity: '0' }
+          },
+          'fade-in': {
+            '0%':   { opacity: '0', transform: 'translateY(6px)' },
+            '100%': { opacity: '1', transform: 'translateY(0)' }
+          },
+          'slide-up': {
+            '0%':   { opacity: '0', transform: 'translateY(24px) scale(0.98)' },
+            '100%': { opacity: '1', transform: 'translateY(0) scale(1)' }
+          },
+          'toast-in': {
+            '0%':   { opacity: '0', transform: 'translate(-50%, 24px)' },
+            '100%': { opacity: '1', transform: 'translate(-50%, 0)' }
+          }
+        },
+        animation: {
+          'ring-pulse': 'ring-pulse 1.8s cubic-bezier(0.4,0,0.6,1) infinite',
+          'fade-in':    'fade-in 0.35s ease-out both',
+          'slide-up':   'slide-up 0.28s cubic-bezier(0.16,1,0.3,1) both',
+          'toast-in':   'toast-in 0.28s cubic-bezier(0.16,1,0.3,1) both'
+        }
+      }
+    }
+  };
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  html { -webkit-tap-highlight-color: transparent; }
+  body { padding-bottom: env(safe-area-inset-bottom); }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-thumb { background: rgba(148,163,184,.25); border-radius: 999px; }
+  input[type=number]::-webkit-outer-spin-button,
+  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+</style>
+</head>
+
+<body class="min-h-screen bg-slate-950 text-slate-100 antialiased font-sans selection:bg-indigo-500/40">
+
+  <!-- Fundo com orbes -->
+  <div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+    <div class="absolute -top-40 -right-32 w-[28rem] h-[28rem] rounded-full bg-indigo-600/25 blur-[120px]"></div>
+    <div class="absolute -bottom-40 -left-32 w-[28rem] h-[28rem] rounded-full bg-violet-600/20 blur-[120px]"></div>
+    <div class="absolute top-1/3 left-1/2 -translate-x-1/2 w-[24rem] h-[24rem] rounded-full bg-blue-600/10 blur-[120px]"></div>
+  </div>
+
+  <div class="max-w-2xl mx-auto px-4 pt-6 pb-28 sm:pb-12">
+
+    <!-- HEADER -->
+    <header class="flex items-center justify-between mb-6">
+      <div class="flex items-center gap-3">
+        <div class="relative w-11 h-11 flex items-center justify-center">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" class="w-11 h-11 drop-shadow-lg drop-shadow-indigo-500/40">
+            <defs>
+              <linearGradient id="arkonGrad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#6366f1"/>
+                <stop offset="1" stop-color="#a855f7"/>
+              </linearGradient>
+              <linearGradient id="arkonGlow" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#fbbf24"/>
+                <stop offset="1" stop-color="#f59e0b"/>
+              </linearGradient>
+            </defs>
+            <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#arkonGrad)"/>
+            <circle cx="32" cy="32" r="19" fill="none" stroke="white" stroke-width="1.2" opacity="0.28"/>
+            <circle cx="32" cy="32" r="22" fill="none" stroke="white" stroke-width="0.8" opacity="0.15"/>
+            <path d="M32 13 L18 51 M32 13 L46 51 M23 38 L41 38"
+                  stroke="white" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <circle cx="32" cy="13" r="2.6" fill="url(#arkonGlow)"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight leading-none">Arkon <span class="text-indigo-400">RH</span></h1>
+          <p class="text-[11px] text-slate-500 font-medium mt-0.5 uppercase tracking-wider">Controle de Ponto PJ</p>
+        </div>
+      </div>
+      <div id="clock" class="text-sm font-semibold text-slate-400 tabular-nums bg-slate-900/60 border border-slate-800 rounded-xl px-3 py-2 backdrop-blur-sm">
+        --:--
+      </div>
+    </header>
+
+    <!-- CARD DE PONTO -->
+    <section class="relative rounded-3xl bg-slate-900/60 border border-slate-800 backdrop-blur-xl p-6 mb-5 shadow-2xl shadow-black/40 overflow-hidden">
+      <div class="absolute inset-x-0 -top-px h-px bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent"></div>
+
+      <div class="text-center">
+        <div class="flex items-center justify-center gap-2 mb-1">
+          <span id="statusDot" class="w-2 h-2 rounded-full bg-slate-600 transition-colors duration-300"></span>
+          <span id="status" class="text-xs font-semibold uppercase tracking-wider text-slate-500 transition-colors duration-300">Fora de serviço</span>
+        </div>
+
+        <div id="elapsed" class="text-5xl sm:text-6xl font-bold tracking-tight tabular-nums text-slate-200 my-3 transition-colors duration-300">
+          00:00
+        </div>
+
+        <div id="todayTotal" class="text-xs font-medium text-slate-500 mb-6">
+          Hoje · 0h 00min
+        </div>
+
+        <div class="flex justify-center mb-6">
+          <div class="relative">
+            <div id="ringPulse" class="absolute inset-0 rounded-full bg-emerald-500/40 opacity-0 hidden"></div>
+            <button id="punchBtn"
+              class="relative w-40 h-40 sm:w-44 sm:h-44 rounded-full font-bold text-base sm:text-lg text-white
+                     bg-gradient-to-br from-emerald-500 to-emerald-600
+                     shadow-2xl shadow-emerald-500/40
+                     transition-all duration-300 ease-out
+                     hover:scale-[1.03] hover:shadow-emerald-500/60
+                     active:scale-95 active:shadow-emerald-500/30
+                     focus:outline-none focus-visible:ring-4 focus-visible:ring-emerald-400/40
+                     flex flex-col items-center justify-center gap-2 select-none">
+              <svg id="punchIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-9 h-9">
+                <path d="M12 2v10"/><path d="m5 12 7 7 7-7"/>
+              </svg>
+              <span id="punchLabel">Entrada</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="todaySessions" class="flex flex-wrap gap-2 justify-center min-h-[28px]"></div>
+      </div>
+    </section>
+
+    <!-- MÊS -->
+    <section class="rounded-3xl bg-slate-900/60 border border-slate-800 backdrop-blur-xl p-5 mb-5 shadow-xl shadow-black/30">
+      <div class="flex items-center justify-between mb-5">
+        <button id="prevMonth" class="group w-10 h-10 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-center
+                       hover:bg-slate-800 hover:border-slate-600 active:scale-95
+                       transition-all duration-200">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-slate-300 group-hover:text-white transition-colors">
+            <path d="m15 18-6-6 6-6"/>
+          </svg>
+        </button>
+        <span id="monthLabel" class="font-semibold text-sm capitalize text-slate-200 tracking-wide">—</span>
+        <button id="nextMonth" class="group w-10 h-10 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-center
+                       hover:bg-slate-800 hover:border-slate-600 active:scale-95
+                       transition-all duration-200">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-slate-300 group-hover:text-white transition-colors">
+            <path d="m9 18 6-6-6-6"/>
+          </svg>
+        </button>
+      </div>
+
+      <div id="monthBody" class="space-y-2"></div>
+    </section>
+
+    <!-- RESUMO -->
+    <section class="rounded-3xl bg-slate-900/60 border border-slate-800 backdrop-blur-xl p-5 mb-5 shadow-xl shadow-black/30">
+      <div class="flex items-center gap-2 mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-indigo-400">
+          <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
+        </svg>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">Resumo do mês</h2>
+      </div>
+      <div id="summary" class="space-y-1"></div>
+    </section>
+
+    <!-- CONFIGURAÇÕES -->
+    <section class="rounded-3xl bg-slate-900/60 border border-slate-800 backdrop-blur-xl p-5 mb-5 shadow-xl shadow-black/30">
+      <div class="flex items-center gap-2 mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-indigo-400">
+          <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400">Configurações</h2>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[11px] font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Valor hora (R$)</label>
+          <input type="number" id="cfgValorHora" step="0.01" min="0" placeholder="0,00"
+            class="w-full bg-slate-800/60 border border-slate-700/60 rounded-xl px-3.5 py-3 text-sm font-medium text-slate-100
+                   placeholder:text-slate-600 tabular-nums
+                   transition-all duration-200
+                   focus:outline-none focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20 focus:bg-slate-800">
+        </div>
+        <div>
+          <label class="block text-[11px] font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Horas normais/dia</label>
+          <input type="number" id="cfgHorasDia" step="0.5" min="0" placeholder="8"
+            class="w-full bg-slate-800/60 border border-slate-700/60 rounded-xl px-3.5 py-3 text-sm font-medium text-slate-100
+                   placeholder:text-slate-600 tabular-nums
+                   transition-all duration-200
+                   focus:outline-none focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20 focus:bg-slate-800">
+        </div>
+        <div>
+          <label class="block text-[11px] font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Adicional extra (%)</label>
+          <input type="number" id="cfgExtraPct" step="5" min="0" placeholder="50"
+            class="w-full bg-slate-800/60 border border-slate-700/60 rounded-xl px-3.5 py-3 text-sm font-medium text-slate-100
+                   placeholder:text-slate-600 tabular-nums
+                   transition-all duration-200
+                   focus:outline-none focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20 focus:bg-slate-800">
+        </div>
+        <div>
+          <label class="block text-[11px] font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Acréscimos (R$)</label>
+          <input type="number" id="cfgAcrescimos" step="0.01" placeholder="0,00"
+            class="w-full bg-slate-800/60 border border-slate-700/60 rounded-xl px-3.5 py-3 text-sm font-medium text-slate-100
+                   placeholder:text-slate-600 tabular-nums
+                   transition-all duration-200
+                   focus:outline-none focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20 focus:bg-slate-800">
+        </div>
+        <div class="col-span-2">
+          <label class="block text-[11px] font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Descontos (R$)</label>
+          <input type="number" id="cfgDescontos" step="0.01" placeholder="0,00"
+            class="w-full bg-slate-800/60 border border-slate-700/60 rounded-xl px-3.5 py-3 text-sm font-medium text-slate-100
+                   placeholder:text-slate-600 tabular-nums
+                   transition-all duration-200
+                   focus:outline-none focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20 focus:bg-slate-800">
+        </div>
+      </div>
+    </section>
+
+    <!-- AÇÕES -->
+    <section class="grid grid-cols-2 gap-3 mb-4">
+      <button id="folhaBtn"
+        class="col-span-2 group flex items-center justify-center gap-2 py-3.5 rounded-2xl
+               bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-semibold text-sm
+               shadow-lg shadow-emerald-500/30
+               hover:shadow-emerald-500/50 hover:scale-[1.01]
+               active:scale-[0.98] transition-all duration-200">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+          <path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+          <rect x="6" y="14" width="12" height="8" rx="1"/>
+        </svg>
+        Gerar Folha de Ponto (PDF)
+      </button>
+
+      <button id="exportBtn"
+        class="col-span-2 group flex items-center justify-center gap-2 py-3.5 rounded-2xl
+               bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-semibold text-sm
+               shadow-lg shadow-indigo-500/30
+               hover:shadow-indigo-500/50 hover:scale-[1.01]
+               active:scale-[0.98] transition-all duration-200">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Exportar planilha (.csv)
+      </button>
+      <button id="addBtn"
+        class="flex items-center justify-center gap-2 py-3.5 rounded-2xl
+               bg-slate-900/60 border border-slate-800 backdrop-blur text-slate-200 font-medium text-sm
+               hover:bg-slate-800/60 hover:border-slate-700 active:scale-[0.98]
+               transition-all duration-200">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Lançar manual
+      </button>
+      <button id="backupBtn"
+        class="flex items-center justify-center gap-2 py-3.5 rounded-2xl
+               bg-slate-900/60 border border-slate-800 backdrop-blur text-slate-200 font-medium text-sm
+               hover:bg-slate-800/60 hover:border-slate-700 active:scale-[0.98]
+               transition-all duration-200">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Backup
+      </button>
+      <button id="importBtn"
+        class="col-span-2 flex items-center justify-center gap-2 py-3.5 rounded-2xl
+               bg-slate-900/60 border border-slate-800 backdrop-blur text-slate-200 font-medium text-sm
+               hover:bg-slate-800/60 hover:border-slate-700 active:scale-[0.98]
+               transition-all duration-200">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Importar backup (.json)
+      </button>
+    </section>
+
+    <p class="text-center text-[11px] text-slate-600 mt-6 mb-2">
+      Arkon RH · dados salvos localmente no seu dispositivo
+    </p>
+  </div>
+
+  <!-- MODAL -->
+  <div id="modalBg" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+    <div id="modalCard" class="w-full max-w-sm rounded-3xl bg-slate-900 border border-slate-800 p-5 shadow-2xl shadow-black/60">
+      <div class="flex items-center justify-between mb-4">
+        <h3 id="modalTitle" class="text-base font-bold text-slate-100">Lançamento</h3>
+        <button id="mClose" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500
+                        hover:text-slate-200 hover:bg-slate-800 active:scale-95
+                        transition-all duration-200">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="space-y-3 mb-5">
+        <div>
+          <label class="block text-[11px] font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Data (AAAA-MM-DD)</label>
+          <input type="text" id="mDate" placeholder="2026-01-15"
+            class="w-full bg-slate-800/60 border border-slate-700/60 rounded-xl px-3.5 py-3 text-sm font-medium text-slate-100
+                   placeholder:text-slate-600 tabular-nums
+                   transition-all duration-200 focus:outline-none focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Entrada</label>
+            <input type="text" id="mIn" placeholder="08:00"
+              class="w-full bg-slate-800/60 border border-slate-700/60 rounded-xl px-3.5 py-3 text-sm font-medium text-slate-100
+                     placeholder:text-slate-600 tabular-nums
+                     transition-all duration-200 focus:outline-none focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20">
+          </div>
+          <div>
+            <label class="block text-[11px] font-medium text-slate-500 mb-1.5 uppercase tracking-wide">Saída</label>
+            <input type="text" id="mOut" placeholder="17:00"
+              class="w-full bg-slate-800/60 border border-slate-700/60 rounded-xl px-3.5 py-3 text-sm font-medium text-slate-100
+                     placeholder:text-slate-600 tabular-nums
+                     transition-all duration-200 focus:outline-none focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/20">
+          </div>
+        </div>
+        <p class="text-[11px] text-slate-600 leading-relaxed">Deixe a saída vazia para marcar uma sessão em aberto.</p>
+      </div>
+
+      <div class="flex gap-2">
+        <button id="mDelete"
+          class="hidden px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm font-semibold
+                 hover:bg-rose-500/20 hover:border-rose-500/50 active:scale-[0.98] transition-all duration-200">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4">
+            <path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+        </button>
+        <button id="mCancel"
+          class="flex-1 py-3 rounded-xl bg-slate-800/60 border border-slate-700/60 text-slate-300 text-sm font-medium
+                 hover:bg-slate-800 hover:text-white active:scale-[0.98] transition-all duration-200">
+          Cancelar
+        </button>
+        <button id="mSave"
+          class="flex-1 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-semibold
+                 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50
+                 active:scale-[0.98] transition-all duration-200">
+          Salvar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="fixed left-1/2 bottom-6 z-[60] hidden px-4 py-3 rounded-2xl
+                          bg-slate-800/95 border border-slate-700 backdrop-blur-lg
+                          text-sm font-medium text-slate-100 shadow-2xl shadow-black/60
+                          -translate-x-1/2"></div>
+
+  <input type="file" id="fileInput" accept=".json" class="hidden">
+
+<script>
+/* ============================================================
+   ARKON RH — Sistema de Ponto PJ
+   ============================================================ */
+
+const KEY = 'arkonRH.v1';
+const state = {
+  records: {},
+  settings: { valorHora: 0, horasDia: 8, extraPct: 50, acrescimos: 0, descontos: 0 }
+};
+
+/* ---------- Helpers ---------- */
+const $ = s => document.querySelector(s);
+const pad = n => String(n).padStart(2, '0');
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const nowHM = () => { const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const todayKey = () => ymd(new Date());
+const toMin = t => { if(!t) return 0; const [h,m] = t.split(':').map(Number); return h*60 + (m||0); };
+const minToHM = m => `${pad(Math.floor(m/60)%24)}:${pad(m%60)}`;
+const fmtDur = m => { m = Math.max(0, Math.round(m)); return `${Math.floor(m/60)}h${pad(m%60)}`; };
+const fmtDurLong = m => { m = Math.max(0, Math.round(m)); return `${Math.floor(m/60)}h ${pad(m%60)}min`; };
+const BRL = n => n.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+const validTime = t => /^([01]\d|2[0-3]):[0-5]\d$/.test(t);
+const validDate = d => /^\d{4}-\d{2}-\d{2}$/.test(d) && !isNaN(new Date(d+'T00:00:00'));
+
+/* ---------- Persistência ---------- */
+function load(){
+  try {
+    const raw = localStorage.getItem(KEY);
+    if(!raw) return;
+    const d = JSON.parse(raw);
+    if(d.records) state.records = d.records;
+    if(d.settings) Object.assign(state.settings, d.settings);
+  } catch(e){ console.warn('Falha ao carregar', e); }
+}
+function save(){
+  try { localStorage.setItem(KEY, JSON.stringify(state)); }
+  catch(e){ toast('Erro ao salvar'); }
+}
+
+/* ---------- Toast ---------- */
+let toastTimer;
+function toast(msg){
+  const el = $('#toast');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  el.classList.add('animate-toast-in');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    el.classList.add('hidden');
+    el.classList.remove('animate-toast-in');
+  }, 2400);
+}
+
+/* ---------- Cálculos ---------- */
+function dayMinutes(dateKey, liveNowMin){
+  const recs = state.records[dateKey] || [];
+  let total = 0;
+  const isToday = dateKey === todayKey();
+  for(const r of recs){
+    if(!r.in) continue;
+    let end = r.out;
+    if(!end){
+      if(isToday && liveNowMin != null) end = minToHM(liveNowMin);
+      else continue;
+    }
+    let d = toMin(end) - toMin(r.in);
+    if(d < 0) d += 1440;
+    total += d;
+  }
+  return total;
+}
+
+function monthKeys(year, month){
+  const keys = [];
+  const last = new Date(year, month+1, 0).getDate();
+  for(let d=1; d<=last; d++) keys.push(`${year}-${pad(month+1)}-${pad(d)}`);
+  return keys;
+}
+
+function monthTotals(year, month){
+  const now = new Date();
+  const liveMin = now.getHours()*60 + now.getMinutes();
+  let totalMin = 0, normalMin = 0, extraMin = 0;
+  const limit = state.settings.horasDia * 60;
+
+  for(const k of monthKeys(year, month)){
+    const dm = dayMinutes(k, liveMin);
+    if(dm <= 0) continue;
+    totalMin += dm;
+    if(limit > 0){
+      normalMin += Math.min(dm, limit);
+      extraMin  += Math.max(0, dm - limit);
+    } else normalMin += dm;
+  }
+
+  const vh = +state.settings.valorHora || 0;
+  const pct = +state.settings.extraPct || 0;
+  const valorNormal = (normalMin/60) * vh;
+  const valorExtra  = (extraMin/60) * vh * (1 + pct/100);
+  const acrescimos  = +state.settings.acrescimos || 0;
+  const descontos   = +state.settings.descontos  || 0;
+  const total = valorNormal + valorExtra + acrescimos - descontos;
+
+  return { totalMin, normalMin, extraMin, valorNormal, valorExtra, acrescimos, descontos, total, limit };
+}
+
+/* ---------- Ponto ---------- */
+function punch(){
+  const k = todayKey();
+  if(!state.records[k]) state.records[k] = [];
+  const recs = state.records[k];
+  const last = recs[recs.length - 1];
+
+  if(last && !last.out){
+    last.out = nowHM();
+    toast(`Saída registrada às ${last.out}`);
+  } else {
+    recs.push({ in: nowHM(), out: null });
+    toast(`Entrada registrada às ${recs[recs.length-1].in}`);
+  }
+  save();
+  renderAll();
+}
+
+/* ---------- Render ---------- */
+let viewDate = new Date();
+viewDate.setDate(1);
+
+function renderClock(){
+  const d = new Date();
+  $('#clock').textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function renderPunch(){
+  const k = todayKey();
+  const recs = state.records[k] || [];
+  const last = recs[recs.length - 1];
+  const open = last && !last.out;
+
+  $('#status').textContent = open ? 'Em serviço' : 'Fora de serviço';
+  $('#statusDot').className = 'w-2 h-2 rounded-full transition-colors duration-300 ' +
+    (open ? 'bg-emerald-400 shadow-[0_0_10px_2px_rgba(52,211,153,0.6)]' : 'bg-slate-600');
+
+  const btn = $('#punchBtn');
+  const label = $('#punchLabel');
+  const icon = $('#punchIcon');
+  const pulse = $('#ringPulse');
+
+  if(open){
+    btn.classList.remove('from-emerald-500','to-emerald-600','shadow-emerald-500/40','shadow-emerald-500/60','shadow-emerald-500/30','focus-visible:ring-emerald-400/40');
+    btn.classList.add('from-rose-500','to-rose-600','shadow-rose-500/40','shadow-rose-500/60','shadow-rose-500/30','focus-visible:ring-rose-400/40');
+    label.textContent = 'Saída';
+    icon.innerHTML = '<path d="M12 22V12"/><path d="m19 12-7-7-7 7"/>';
+    pulse.classList.remove('hidden','opacity-0');
+    pulse.classList.add('animate-ring-pulse');
+  } else {
+    btn.classList.remove('from-rose-500','to-rose-600','shadow-rose-500/40','shadow-rose-500/60','shadow-rose-500/30','focus-visible:ring-rose-400/40');
+    btn.classList.add('from-emerald-500','to-emerald-600','shadow-emerald-500/40','shadow-emerald-500/60','shadow-emerald-500/30','focus-visible:ring-emerald-400/40');
+    label.textContent = 'Entrada';
+    icon.innerHTML = '<path d="M12 2v10"/><path d="m5 12 7 7 7-7"/>';
+    pulse.classList.add('hidden');
+    pulse.classList.remove('animate-ring-pulse');
+  }
+
+  // chips do dia (clique = editar, × = remover)
+  const wrap = $('#todaySessions');
+  wrap.innerHTML = '';
+
+  if(recs.length){
+    const hint = document.createElement('div');
+    hint.className = 'w-full text-[10px] text-slate-600 uppercase tracking-wider font-medium mb-1';
+    hint.textContent = 'toque para editar';
+    wrap.appendChild(hint);
+  }
+
+  recs.forEach((r, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'group inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 rounded-full ' +
+                     'bg-slate-800/70 border border-slate-700/70 ' +
+                     'text-xs font-semibold text-slate-300 tabular-nums cursor-pointer ' +
+                     'hover:bg-slate-800 hover:border-indigo-500/60 hover:text-white hover:shadow-lg hover:shadow-indigo-500/10 ' +
+                     'active:scale-95 transition-all duration-200';
+    chip.title = 'Toque para editar';
+    chip.innerHTML =
+      '<span>' + r.in + ' – ' + (r.out || '…') + '</span>' +
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+      'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" ' +
+      'class="w-3 h-3 text-slate-500 group-hover:text-indigo-400 transition-colors duration-200">' +
+      '<path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>' +
+      '<span class="remove ml-1 w-5 h-5 flex items-center justify-center rounded-full ' +
+      'text-rose-400/60 hover:text-white hover:bg-rose-500/80 font-bold text-sm leading-none ' +
+      'transition-all duration-200">×</span>';
+
+    chip.onclick = () => openModal(k, i);
+    chip.querySelector('.remove').onclick = e => {
+      e.stopPropagation();
+      if(confirm('Remover esta sessão?')){
+        state.records[k].splice(i, 1);
+        if(state.records[k].length === 0) delete state.records[k];
+        save(); renderAll();
+      }
+    };
+    wrap.appendChild(chip);
+  });
+
+  const now = new Date();
+  const liveMin = now.getHours()*60 + now.getMinutes();
+  const mins = dayMinutes(k, liveMin);
+  $('#todayTotal').textContent = `Hoje · ${fmtDurLong(mins)}`;
+
+  // cronômetro (sem segundos)
+  let elapsed = '00:00';
+  if(open){
+    const start = toMin(last.in);
+    const cur = now.getHours()*60 + now.getMinutes();
+    let diff = cur - start;
+    if(diff < 0) diff += 1440;
+    elapsed = `${pad(Math.floor(diff/60))}:${pad(diff%60)}`;
+  }
+  const el = $('#elapsed');
+  el.textContent = elapsed;
+  el.className = 'text-5xl sm:text-6xl font-bold tracking-tight tabular-nums my-3 transition-colors duration-300 ' +
+    (open ? 'text-emerald-400' : 'text-slate-200');
+}
+
+function renderMonth(){
+  const y = viewDate.getFullYear();
+  const m = viewDate.getMonth();
+  const label = viewDate.toLocaleDateString('pt-BR', { month:'long', year:'numeric' });
+  $('#monthLabel').textContent = label;
+
+  const vh = +state.settings.valorHora || 0;
+  const pct = +state.settings.extraPct || 0;
+  const limit = state.settings.horasDia * 60;
+  const now = new Date();
+  const liveMin = now.getHours()*60 + now.getMinutes();
+
+  const tbody = $('#monthBody');
+  tbody.innerHTML = '';
+  let any = false;
+
+  for(const k of monthKeys(y, m)){
+    const recs = state.records[k] || [];
+    const mins = dayMinutes(k, liveMin);
+    if(recs.length === 0 && mins === 0) continue;
+    any = true;
+
+    let valorDia = 0;
+    if(limit > 0){
+      const n = Math.min(mins, limit);
+      const e = Math.max(0, mins - limit);
+      valorDia = (n/60)*vh + (e/60)*vh*(1 + pct/100);
+    } else valorDia = (mins/60)*vh;
+
+    const dObj = new Date(k + 'T00:00:00');
+    const wd = dObj.toLocaleDateString('pt-BR', { weekday:'short' }).replace('.','');
+    const dm = pad(dObj.getDate());
+    const mm = pad(dObj.getMonth()+1);
+
+    const row = document.createElement('div');
+    row.className = 'rounded-2xl bg-slate-800/40 border border-slate-800/80 p-3 ' +
+                    'hover:bg-slate-800/60 hover:border-slate-700/80 transition-all duration-200 animate-fade-in';
+
+    const head = document.createElement('div');
+    head.className = 'flex items-center justify-between mb-2';
+
+    const dateBox = document.createElement('div');
+    dateBox.className = 'flex items-center gap-2.5';
+    dateBox.innerHTML = '<div class="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-xs font-bold text-indigo-300 tabular-nums">' +
+                        dm + '/' + mm + '</div>' +
+                        '<div><div class="text-xs font-semibold text-slate-200 capitalize leading-none">' + wd + '</div>' +
+                        '<div class="text-[10px] text-slate-500 mt-1">' + recs.length + ' sessão' + (recs.length !== 1 ? 'ões' : '') + '</div></div>';
+    head.appendChild(dateBox);
+
+    const totals = document.createElement('div');
+    totals.className = 'text-right';
+    totals.innerHTML = '<div class="text-sm font-bold text-slate-100 tabular-nums">' + fmtDur(mins) + '</div>' +
+                       (vh > 0 ? '<div class="text-[10px] font-medium text-emerald-400 tabular-nums mt-0.5">' + BRL(valorDia) + '</div>' : '');
+    head.appendChild(totals);
+
+    row.appendChild(head);
+
+    if(recs.length){
+      const list = document.createElement('div');
+      list.className = 'flex flex-wrap gap-1.5';
+      recs.forEach((r, i) => {
+        const chip = document.createElement('div');
+        chip.className = 'group inline-flex items-center gap-1.5 pl-2.5 pr-1 py-1 rounded-lg ' +
+                         'bg-slate-900/60 border border-slate-700/50 ' +
+                         'text-[11px] font-semibold text-slate-400 tabular-nums cursor-pointer ' +
+                         'hover:border-indigo-500/50 hover:text-slate-100 hover:bg-slate-800/80 ' +
+                         'active:scale-95 transition-all duration-200';
+        chip.title = 'Toque para editar';
+        chip.innerHTML =
+          '<span>' + r.in + '–' + (r.out || '…') + '</span>' +
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+          'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" ' +
+          'class="w-2.5 h-2.5 text-slate-500 group-hover:text-indigo-400 transition-colors duration-200">' +
+          '<path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>' +
+          '<span class="remove w-4 h-4 flex items-center justify-center rounded-full ' +
+          'text-rose-400/60 hover:text-white hover:bg-rose-500/80 font-bold text-xs leading-none ' +
+          'transition-all duration-200">×</span>';
+
+        chip.onclick = () => openModal(k, i);
+        chip.querySelector('.remove').onclick = e => {
+          e.stopPropagation();
+          if(confirm('Remover esta sessão?')){
+            state.records[k].splice(i, 1);
+            if(state.records[k].length === 0) delete state.records[k];
+            save(); renderAll();
+          }
+        };
+        list.appendChild(chip);
+      });
+      row.appendChild(list);
+    }
+
+    tbody.appendChild(row);
+  }
+
+  if(!any){
+    tbody.innerHTML = '<div class="text-center py-10 text-sm text-slate-500">' +
+                      '<div class="text-3xl mb-2 opacity-40">📭</div>' +
+                      'Nenhum registro neste mês.</div>';
+  }
+}
+
+function renderSummary(){
+  const y = viewDate.getFullYear();
+  const m = viewDate.getMonth();
+  const t = monthTotals(y, m);
+  const s = state.settings;
+
+  const rows = [];
+  const row = (label, value) =>
+    '<div class="flex items-center justify-between py-2 border-b border-slate-800/60 last:border-0">' +
+      '<span class="text-xs text-slate-500 font-medium">' + label + '</span>' +
+      '<span class="text-sm font-semibold text-slate-200 tabular-nums">' + value + '</span>' +
+    '</div>';
+
+  rows.push(row('Horas totais', fmtDurLong(t.totalMin)));
+  if(s.horasDia > 0){
+    rows.push(row(`Normais (até ${s.horasDia}h/dia)`, fmtDurLong(t.normalMin)));
+    rows.push(row(`Extras (+${s.extraPct || 0}%)`, fmtDurLong(t.extraMin)));
+  }
+  if(s.valorHora > 0){
+    rows.push(row('Subtotal normal', BRL(t.valorNormal)));
+    rows.push(row('Subtotal extra', BRL(t.valorExtra)));
+  }
+  if(t.acrescimos) rows.push(row('Acréscimos', '<span class="text-emerald-400">+ ' + BRL(t.acrescimos) + '</span>'));
+  if(t.descontos)  rows.push(row('Descontos',  '<span class="text-rose-400">- ' + BRL(t.descontos) + '</span>'));
+
+  const totalTxt = s.valorHora > 0 ? BRL(t.total) : '—';
+
+  const html = rows.join('') +
+    '<div class="mt-3 pt-3 border-t border-slate-700/60 flex items-center justify-between">' +
+      '<span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total do mês</span>' +
+      '<span class="text-lg font-bold bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent tabular-nums">' + totalTxt + '</span>' +
+    '</div>';
+
+  $('#summary').innerHTML = html;
+}
+
+function renderSettings(){
+  const s = state.settings;
+  $('#cfgValorHora').value  = s.valorHora || '';
+  $('#cfgHorasDia').value   = s.horasDia ?? 8;
+  $('#cfgExtraPct').value   = s.extraPct ?? 50;
+  $('#cfgAcrescimos').value = s.acrescimos || '';
+  $('#cfgDescontos').value  = s.descontos || '';
+}
+
+function renderAll(){
+  renderPunch();
+  renderMonth();
+  renderSummary();
+  renderSettings();
+}
+
+/* ---------- Modal ---------- */
+let modalCtx = { dateKey: null, idx: null };
+
+function openModal(dateKey, idx){
+  modalCtx = { dateKey, idx };
+  const rec = (state.records[dateKey] || [])[idx] || { in:'', out:'' };
+  $('#modalTitle').textContent = idx == null ? 'Lançar ponto' : 'Editar sessão';
+  $('#mDate').value = dateKey || todayKey();
+  $('#mIn').value   = rec.in || '';
+  $('#mOut').value  = rec.out || '';
+
+  $('#mDelete').classList.toggle('hidden', idx == null);
+
+  const bg = $('#modalBg');
+  const card = $('#modalCard');
+  bg.classList.remove('hidden');
+  bg.classList.add('flex');
+  card.classList.remove('animate-slide-up');
+  void card.offsetWidth;
+  card.classList.add('animate-slide-up');
+
+  setTimeout(() => $('#mIn').focus(), 120);
+}
+function closeModal(){
+  const bg = $('#modalBg');
+  bg.classList.add('hidden');
+  bg.classList.remove('flex');
+}
+
+function saveModal(){
+  const d = $('#mDate').value.trim();
+  const i = $('#mIn').value.trim();
+  const o = $('#mOut').value.trim();
+
+  if(!validDate(d)) return toast('Data inválida (use AAAA-MM-DD)');
+  if(!validTime(i)) return toast('Hora de entrada inválida');
+  if(o && !validTime(o)) return toast('Hora de saída inválida');
+
+  const newRec = { in: i, out: o || null };
+
+  if(modalCtx.idx == null){
+    if(!state.records[d]) state.records[d] = [];
+    state.records[d].push(newRec);
+  } else {
+    state.records[modalCtx.dateKey][modalCtx.idx] = newRec;
+  }
+  save();
+  closeModal();
+  renderAll();
+  toast('Salvo com sucesso');
+}
+
+function deleteModal(){
+  if(modalCtx.idx == null) return;
+  if(!confirm('Excluir este lançamento?')) return;
+  const { dateKey, idx } = modalCtx;
+  const recs = state.records[dateKey] || [];
+  recs.splice(idx, 1);
+  if(recs.length === 0) delete state.records[dateKey];
+  save();
+  closeModal();
+  renderAll();
+  toast('Lançamento excluído');
+}
+
+/* ---------- Export CSV ---------- */
+function exportCSV(){
+  const y = viewDate.getFullYear();
+  const m = viewDate.getMonth();
+  const vh = +state.settings.valorHora || 0;
+  const pct = +state.settings.extraPct || 0;
+  const limit = state.settings.horasDia * 60;
+  const now = new Date();
+  const liveMin = now.getHours()*60 + now.getMinutes();
+
+  const lines = [];
+  lines.push(`Arkon RH — Relatório de Ponto;${viewDate.toLocaleDateString('pt-BR', { month:'long', year:'numeric' })}`);
+  lines.push(`Valor da hora;${vh.toFixed(2).replace('.', ',')}`);
+  lines.push(`Horas normais/dia;${state.settings.horasDia}`);
+  lines.push(`Adicional hora extra (%);${state.settings.extraPct}`);
+  lines.push('');
+  lines.push('Data;Dia;Entrada;Saída;Horas do período;Horas do dia;Valor do dia');
+
+  let totalMin = 0, totalValor = 0;
+
+  for(const k of monthKeys(y, m)){
+    const recs = state.records[k] || [];
+    if(recs.length === 0) continue;
+    const dm = dayMinutes(k, liveMin);
+    totalMin += dm;
+
+    let valorDia = 0;
+    if(limit > 0){
+      const n = Math.min(dm, limit);
+      const e = Math.max(0, dm - limit);
+      valorDia = (n/60)*vh + (e/60)*vh*(1 + pct/100);
+    } else valorDia = (dm/60)*vh;
+    totalValor += valorDia;
+
+    const dObj = new Date(k + 'T00:00:00');
+    const dataBR = dObj.toLocaleDateString('pt-BR');
+    const wd = dObj.toLocaleDateString('pt-BR', { weekday:'long' });
+
+    recs.forEach((r, i) => {
+      let mins = 0;
+      if(r.in && r.out){
+        mins = toMin(r.out) - toMin(r.in);
+        if(mins < 0) mins += 1440;
+      }
+      lines.push([
+        i === 0 ? dataBR : '',
+        i === 0 ? wd : '',
+        r.in || '',
+        r.out || '(em aberto)',
+        fmtDur(mins),
+        i === recs.length - 1 ? fmtDur(dm) : '',
+        i === recs.length - 1 && vh > 0 ? valorDia.toFixed(2).replace('.', ',') : ''
+      ].join(';'));
+    });
+  }
+
+  lines.push('');
+  lines.push(`TOTAL DE HORAS;;;${fmtDur(totalMin)}`);
+  if(vh > 0){
+    const acresc = +state.settings.acrescimos || 0;
+    const desc   = +state.settings.descontos  || 0;
+    lines.push(`VALOR BRUTO;;;${totalValor.toFixed(2).replace('.', ',')}`);
+    if(acresc) lines.push(`Acréscimos;;;${acresc.toFixed(2).replace('.', ',')}`);
+    if(desc)   lines.push(`Descontos;;;${desc.toFixed(2).replace('.', ',')}`);
+    lines.push(`VALOR LÍQUIDO;;;${(totalValor + acresc - desc).toFixed(2).replace('.', ',')}`);
+  }
+
+  const csv = '\uFEFF' + lines.join('\r\n');
+  const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `arkon-rh-${y}-${pad(m+1)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Planilha exportada');
+}
+
+/* ---------- Folha de Ponto em PDF ---------- */
+function exportFolhaPDF(){
+  const y = viewDate.getFullYear();
+  const m = viewDate.getMonth();
+  const lastDay = new Date(y, m+1, 0).getDate();
+  const now = new Date();
+  const liveMin = now.getHours()*60 + now.getMinutes();
+
+  const jornadaDiaMin = (state.settings.horasDia || 8) * 60;
+  const vh  = +state.settings.valorHora || 0;
+  const pct = +state.settings.extraPct || 0;
+
+  const pad2 = n => String(n).padStart(2, '0');
+  const fmtHMS = min => {
+    min = Math.max(0, Math.round(min));
+    const h = Math.floor(min / 60);
+    const mm = min % 60;
+    return `${pad2(h)}:${pad2(mm)}:00`;
+  };
+  const diaSemanaPT = ['Domingo','Segunda-Feira','Terça-Feira','Quarta-Feira','Quinta-Feira','Sexta-Feira','Sábado'];
+
+  let totalMesMin = 0;
+  let diasUteis = 0;
+  const rows = [];
+
+  for(let d = 1; d <= lastDay; d++){
+    const k = `${y}-${pad2(m+1)}-${pad2(d)}`;
+    const dObj = new Date(k + 'T00:00:00');
+    const wd = dObj.getDay();
+    const isWeekend = wd === 0 || wd === 6;
+    if(!isWeekend) diasUteis++;
+
+    const recs = state.records[k] || [];
+    const mins = dayMinutes(k, liveMin);
+    totalMesMin += mins;
+
+    const sessions = [];
+    for(let i = 0; i < 3; i++){
+      const r = recs[i];
+      sessions.push({ in: (r && r.in) || '', out: (r && r.out) || '' });
+    }
+
+    const saldoMin = isWeekend ? 0 : Math.max(0, jornadaDiaMin - mins);
+
+    rows.push({
+      data: `${pad2(d)}/${pad2(m+1)}/${y}`,
+      diaSemana: diaSemanaPT[wd],
+      sessions,
+      totalMin: mins,
+      jornadaMin: isWeekend ? 0 : jornadaDiaMin,
+      saldoMin,
+      isWeekend,
+      dayNum: d
+    });
+  }
+
+  const jornadaMesMin = jornadaDiaMin * diasUteis;
+  const saldoMesMin = Math.max(0, jornadaMesMin - totalMesMin);
+
+  let normalMin = 0, extraMin = 0;
+  for(let d = 1; d <= lastDay; d++){
+    const k = `${y}-${pad2(m+1)}-${pad2(d)}`;
+    const dm = dayMinutes(k, liveMin);
+    if(dm <= 0) continue;
+    if(jornadaDiaMin > 0){
+      normalMin += Math.min(dm, jornadaDiaMin);
+      extraMin  += Math.max(0, dm - jornadaDiaMin);
+    } else normalMin += dm;
+  }
+  const acresc = +state.settings.acrescimos || 0;
+  const desc   = +state.settings.descontos  || 0;
+  const salario = (normalMin/60) * vh + (extraMin/60) * vh * (1 + pct/100) + acresc - desc;
+
+  const freq = jornadaMesMin > 0 ? (totalMesMin / jornadaMesMin) * 100 : 0;
+  const mesLabel = viewDate.toLocaleDateString('pt-BR', { month:'short', year:'numeric' })
+                    .replace('.', '').toUpperCase();
+
+  const fmtBR = n => n.toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+
+  const rowsHtml = rows.map(r => {
+    const zebra = !r.isWeekend && (r.dayNum % 2 === 0) ? ' class="alt"' : '';
+    const wk = r.isWeekend ? ' class="weekend"' : zebra;
+    const s = r.sessions;
+    return `<tr${wk}>
+      <td class="c-data">${r.data}</td>
+      <td class="c-dia">${r.diaSemana}</td>
+      <td class="c-h">${s[0].in}</td>
+      <td class="c-h">${s[0].out}</td>
+      <td class="c-h">${s[1].in}</td>
+      <td class="c-h">${s[1].out}</td>
+      <td class="c-h">${s[2].in}</td>
+      <td class="c-h">${s[2].out}</td>
+      <td class="c-h c-tot">${r.totalMin > 0 ? fmtHMS(r.totalMin) : ''}</td>
+      <td class="c-h c-jor">${r.jornadaMin > 0 ? fmtHMS(r.jornadaMin) : ''}</td>
+      <td class="c-h c-sld">${r.saldoMin > 0 ? fmtHMS(r.saldoMin) : ''}</td>
+    </tr>`;
+  }).join('');
+
+  const totalHtml = `<tr class="total-row">
+    <td class="c-data"><b>Total</b></td>
+    <td class="c-dia"></td>
+    <td colspan="6"></td>
+    <td class="c-h c-tot"><b>${fmtHMS(totalMesMin)}</b></td>
+    <td class="c-h c-jor"><b>${fmtHMS(jornadaMesMin)}</b></td>
+    <td class="c-h c-sld"><b>${saldoMesMin > 0 ? fmtHMS(saldoMesMin) : ''}</b></td>
+  </tr>`;
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Folha de Ponto — Arkon RH — ${mesLabel}</title>
+<style>
+  @page { size: A4 portrait; margin: 10mm 8mm 12mm; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; background:#fff; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    color:#111;
+    font-size: 10px;
+    padding: 8mm 6mm 10mm;
+  }
+  .sheet { max-width: 210mm; margin: 0 auto; }
+  .header {
+    display:flex; align-items:center; gap:10px;
+    padding-bottom: 6px; margin-bottom: 6px;
+    border-bottom: 2px solid #6366f1;
+  }
+  .header svg { width: 34px; height: 34px; flex-shrink: 0; }
+  .header .brand { display:flex; flex-direction:column; line-height: 1.1; }
+  .header .brand .n { font-size: 13px; font-weight: 800; letter-spacing:.4px; }
+  .header .brand .n span { color:#6366f1; }
+  .header .brand .s { font-size: 8px; color:#666; text-transform:uppercase; letter-spacing:1.2px; font-weight: 600; }
+  .title {
+    text-align: center;
+    font-size: 13px; font-weight: 700; text-decoration: underline;
+    margin: 8px 0 10px; letter-spacing:.5px;
+  }
+  .meta {
+    display:flex; justify-content:space-between; align-items:flex-start;
+    margin-bottom: 6px; font-size: 9px;
+  }
+  .mes-ano { display:flex; align-items:center; gap:5px; }
+  .mes-ano .lbl { color:#444; font-weight:600; }
+  .mes-ano .val {
+    background:#e5e7eb; padding:2px 10px; font-weight:800;
+    text-transform:uppercase; letter-spacing:.6px; font-size:9.5px;
+    min-width:70px; text-align:center;
+  }
+  .jornadas { text-align:right; font-size:9px; line-height:1.6; }
+  .jornadas .lbl { color:#444; margin-right:4px; }
+  .jornadas .val { font-weight:700; }
+  table { width:100%; border-collapse: collapse; font-size: 9px; table-layout: fixed; }
+  col.c-data  { width: 9%; }
+  col.c-dia   { width: 14%; }
+  col.c-hora  { width: 8.5%; }
+  col.c-total { width: 10%; }
+  col.c-jor   { width: 9%; }
+  col.c-sld   { width: 9%; }
+  th, td {
+    border: 1px solid #333;
+    padding: 1.5px 3px;
+    height: 15px;
+    vertical-align: middle;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+  th {
+    background:#e5e7eb;
+    font-weight:700; font-size:8px;
+    text-transform:uppercase; text-align:center; letter-spacing:.2px;
+  }
+  td { text-align:center; font-size:9px; }
+  td.c-data { text-align:left; padding-left:4px; font-weight:600; }
+  td.c-dia  { text-align:left; padding-left:4px; }
+  td.c-h    { font-variant-numeric: tabular-nums; }
+  td.c-tot  { font-weight:700; }
+  td.c-jor  { color:#555; }
+  td.c-sld  { color:#b91c1c; font-weight:600; }
+  tr.weekend td { background:#e9d5ff; }
+  tr.alt td     { background:#fef3c7; }
+  tr.total-row td {
+    background:#d1d5db; font-weight:800;
+    border-top: 2px solid #111;
+  }
+  .bottom {
+    display:flex; justify-content:flex-end;
+    margin-top: 10px; font-size:9px;
+  }
+  .bottom-box { width: 55%; }
+  .bottom-box .row {
+    display:flex; align-items:stretch; margin-bottom: 2px;
+    border: 1px solid #999;
+  }
+  .bottom-box .row .lbl {
+    flex:1; padding:3px 8px;
+    background:#f3f4f6; text-align:right;
+    border-right: 1px solid #999; font-weight:600; color:#333;
+  }
+  .bottom-box .row .val {
+    width: 90px; padding:3px 8px; text-align:right;
+    background:#e0e7ff; font-weight:700; font-variant-numeric: tabular-nums;
+  }
+  .bottom-box .row.hl .val { background:#bbf7d0; }
+  .bottom-box .row.freq .val { background:#fde68a; }
+  .declaracao { margin-top: 22px; text-align:center; font-size:9px; color:#333; }
+  .assinatura {
+    margin: 40px auto 0; width: 55%;
+    border-top: 1px solid #333; padding-top: 3px;
+    text-align:center; font-size:8px; color:#555;
+  }
+  .footer-note { text-align:center; font-size:7.5px; color:#999; margin-top: 10px; }
+  @media print { body { padding: 6mm 5mm; } .no-print { display:none; } }
+  .print-btn {
+    position: fixed; top: 12px; right: 12px;
+    background: #6366f1; color:#fff; border:none;
+    padding: 10px 16px; border-radius: 10px;
+    font-weight: 700; font-size: 13px; cursor: pointer;
+    box-shadow: 0 4px 14px rgba(99,102,241,.4);
+  }
+  .print-btn:hover { background:#4f46e5; }
+  @media print { .print-btn { display:none; } }
+</style>
+</head>
+<body>
+  <button class="print-btn no-print" onclick="window.print()">🖨 Salvar em PDF</button>
+
+  <div class="sheet">
+    <div class="header">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+        <defs>
+          <linearGradient id="g" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#6366f1"/><stop offset="1" stop-color="#a855f7"/>
+          </linearGradient>
+        </defs>
+        <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#g)"/>
+        <circle cx="32" cy="32" r="19" fill="none" stroke="white" stroke-width="1.2" opacity="0.28"/>
+        <path d="M32 13 L18 51 M32 13 L46 51 M23 38 L41 38"
+              stroke="white" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+        <circle cx="32" cy="13" r="2.6" fill="#fbbf24"/>
+      </svg>
+      <div class="brand">
+        <div class="n">ARKON <span>RH</span></div>
+        <div class="s">Controle de Ponto PJ</div>
+      </div>
+    </div>
+
+    <div class="title">Controle de Ponto</div>
+
+    <div class="meta">
+      <div class="mes-ano">
+        <span class="lbl">Mês/Ano:</span>
+        <span class="val">${mesLabel}</span>
+      </div>
+      <div class="jornadas">
+        <div><span class="lbl">Jornada Dia:</span><span class="val">${fmtHMS(jornadaDiaMin)}</span></div>
+        <div><span class="lbl">Dias úteis/mês:</span><span class="val">${diasUteis}</span></div>
+        <div><span class="lbl">Jornada mês:</span><span class="val">${fmtHMS(jornadaMesMin)}</span></div>
+      </div>
+    </div>
+
+    <table>
+      <colgroup>
+        <col class="c-data"><col class="c-dia">
+        <col class="c-hora"><col class="c-hora">
+        <col class="c-hora"><col class="c-hora">
+        <col class="c-hora"><col class="c-hora">
+        <col class="c-total"><col class="c-jor"><col class="c-sld">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Dia Semana</th>
+          <th>Entrada 1</th>
+          <th>Saída 1</th>
+          <th>Entrada 2</th>
+          <th>Saída 2</th>
+          <th>Entrada 3</th>
+          <th>Saída 3</th>
+          <th>Total Horas</th>
+          <th>Horas</th>
+          <th>Saldo-</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+        ${totalHtml}
+      </tbody>
+    </table>
+
+    <div class="bottom">
+      <div class="bottom-box">
+        <div class="row">
+          <div class="lbl">Valor Hora</div>
+          <div class="val">${fmtBR(vh)}</div>
+        </div>
+        <div class="row hl">
+          <div class="lbl">Salário a Receber</div>
+          <div class="val">${fmtBR(salario)}</div>
+        </div>
+        <div class="row freq">
+          <div class="lbl">Índice de Frequência</div>
+          <div class="val">${freq.toFixed(2).replace('.', ',')}%</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="declaracao">Declaro serem verdadeiras as informações acima.</div>
+    <div class="assinatura">Assinatura</div>
+
+    <div class="footer-note">
+      Arkon RH · gerado em ${new Date().toLocaleString('pt-BR')}
+    </div>
+  </div>
+
+  <script>
+    window.addEventListener('load', () => {
+      setTimeout(() => window.print(), 400);
+    });
+  <\/script>
+</body>
+</html>`;
+
+  const w = window.open('', '_blank');
+  if(!w) { toast('Permita popups para gerar a folha'); return; }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+  toast('Folha gerada! Escolha "Salvar como PDF"');
+}
+
+/* ---------- Backup / Import ---------- */
+function backup(){
+  const data = JSON.stringify(state, null, 2);
+  const blob = new Blob([data], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `arkon-rh-backup-${todayKey()}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Backup gerado');
+}
+
+function importFile(file){
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const d = JSON.parse(e.target.result);
+      if(!d.records) throw new Error('Arquivo inválido');
+      if(!confirm('Isso irá substituir todos os dados atuais. Continuar?')) return;
+      state.records = d.records;
+      if(d.settings) Object.assign(state.settings, d.settings);
+      save(); renderAll();
+      toast('Dados importados');
+    } catch(err){
+      toast('Erro: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* ---------- Eventos ---------- */
+$('#punchBtn').onclick = punch;
+
+$('#prevMonth').onclick = () => { viewDate.setMonth(viewDate.getMonth() - 1); renderMonth(); renderSummary(); };
+$('#nextMonth').onclick = () => { viewDate.setMonth(viewDate.getMonth() + 1); renderMonth(); renderSummary(); };
+
+$('#mCancel').onclick = closeModal;
+$('#mClose').onclick  = closeModal;
+$('#mSave').onclick   = saveModal;
+$('#mDelete').onclick = deleteModal;
+$('#modalBg').onclick = e => { if(e.target.id === 'modalBg') closeModal(); };
+
+$('#addBtn').onclick    = () => openModal(todayKey(), null);
+$('#exportBtn').onclick = exportCSV;
+$('#folhaBtn').onclick  = exportFolhaPDF;
+$('#backupBtn').onclick = backup;
+$('#importBtn').onclick = () => $('#fileInput').click();
+$('#fileInput').onchange = e => {
+  const f = e.target.files[0];
+  if(f) importFile(f);
+  e.target.value = '';
+};
+
+function bindCfg(id, key, float){
+  $(id).addEventListener('input', e => {
+    const v = e.target.value.replace(',', '.');
+    state.settings[key] = float ? (parseFloat(v) || 0) : (parseInt(v) || 0);
+    save();
+    renderMonth();
+    renderSummary();
+  });
+}
+bindCfg('#cfgValorHora',  'valorHora',  true);
+bindCfg('#cfgHorasDia',   'horasDia',   true);
+bindCfg('#cfgExtraPct',   'extraPct',   true);
+bindCfg('#cfgAcrescimos', 'acrescimos', true);
+bindCfg('#cfgDescontos',  'descontos',  true);
+
+['mDate','mIn','mOut'].forEach(id => {
+  $('#' + id).addEventListener('keydown', e => {
+    if(e.key === 'Enter') saveModal();
+    if(e.key === 'Escape') closeModal();
+  });
+});
+
+/* ---------- PWA manifest ---------- */
+(function(){
+  const icon = 'data:image/svg+xml,' + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">' +
+    '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' +
+    '<stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#a855f7"/></linearGradient></defs>' +
+    '<rect width="192" height="192" rx="44" fill="url(#g)"/>' +
+    '<path d="M96 40 L54 152 M96 40 L138 152 M69 114 L123 114" stroke="#fff" stroke-width="11" stroke-linecap="round" stroke-linejoin="round" fill="none"/>' +
+    '<circle cx="96" cy="40" r="8" fill="#fbbf24"/>' +
+    '</svg>'
+  );
+  const manifest = {
+    name: 'Arkon RH — Ponto PJ',
+    short_name: 'Arkon RH',
+    start_url: '.',
+    display: 'standalone',
+    background_color: '#020617',
+    theme_color: '#020617',
+    icons: [{ src: icon, sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable' }]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], { type:'application/json' });
+  const link = document.createElement('link');
+  link.rel = 'manifest';
+  link.href = URL.createObjectURL(blob);
+  document.head.appendChild(link);
+})();
+
+/* ---------- Boot ---------- */
+load();
+renderAll();
+renderClock();
+
+setInterval(() => {
+  renderClock();
+  renderPunch();
+}, 15000);
+
+setInterval(() => { renderMonth(); renderSummary(); }, 60000);
+</script>
+</body>
+</html>
